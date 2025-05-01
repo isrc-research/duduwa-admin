@@ -16,6 +16,8 @@ import { ChevronLeft, ChevronRight, Copy, Filter, Key } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import BuildingForm from "@/components/forms/BuildingForm";
 import FamilyForm from "@/components/forms/FamilyForm";
+import InstitutionalForm from "../forms/InstitutionalForm";
+import BusinessForm from "../forms/BusinessForm";
 
 interface TokenListProps {
   areaId: string;
@@ -204,6 +206,8 @@ export const TokenList = ({ areaId }: TokenListProps) => {
                     .map((t) => t.token)}
                   areaId={areaId}
                 />
+                <InstitutionalForm areaId={areaId} />
+                <BusinessForm areaId={areaId} />
               </div>
             </div>
 
