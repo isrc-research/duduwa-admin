@@ -30,11 +30,24 @@ export const createArea = protectedProcedure
       geometry: sql`ST_GeomFromGeoJSON(${geoJson})`,
     });
     // Create 200 tokens for the newly created area
-    const tokens = Array.from({ length: 200 }, (_, index) => ({
-      token: `0${input.wardNumber}L${input.code}G${(index + 1).toString().padStart(3, '0')}`,
+    const generateUniqueRandomNumber = () => {
+      return Math.floor(Math.random() * 900) + 100; // generates 100-999
+    };
+
+    const usedNumbers = new Set<number>();
+    const tokens = Array.from({ length: 200 }, () => {
+      let randomNum;
+      do {
+      randomNum = generateUniqueRandomNumber();
+      } while (usedNumbers.has(randomNum));
+      usedNumbers.add(randomNum);
+      
+      return {
+      token: `${input.code}${randomNum}`,
       areaId: id as string,
       status: "unallocated",
-    })) as BuildingToken[];
+      };
+    }) as BuildingToken[];
 
     await ctx.db.insert(buildingTokens).values(tokens);
     return newArea;

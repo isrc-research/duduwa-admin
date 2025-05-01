@@ -214,9 +214,7 @@ export function EnumeratorArea() {
         />
       </div>
 
-      {/* Token Stats and Actions Section */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Token Stats */}
+      {/* <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="border-b bg-muted/50">
             <div className="flex items-center gap-2">
@@ -229,7 +227,6 @@ export function EnumeratorArea() {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
         <Card>
           <CardHeader className="border-b bg-muted/50">
             <div className="flex items-center gap-2">
@@ -259,7 +256,7 @@ export function EnumeratorArea() {
           </CardContent>
         </Card>
       </div>
-
+ */}
       {/* Add the AreaStatusActions component here */}
       {area && <AreaStatusActions area={area} />}
 
@@ -276,7 +273,7 @@ export function EnumeratorArea() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="border-b">
-            <div className="h-[400px] w-full z-0">
+            <div className="h-[800px] w-full z-0">
               <MapContainer
                 className="h-full w-full z-0"
                 zoom={15}

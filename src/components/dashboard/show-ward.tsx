@@ -83,7 +83,7 @@ export const ShowWard = ({ wardNumber }: { wardNumber: number }) => {
           className="h-[600px] w-full"
           zoom={13}
           scrollWheelZoom={false}
-          center={[26.92632339689546, 87.37272328644147]}
+          center={[28.044203, 81.697494]}
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
