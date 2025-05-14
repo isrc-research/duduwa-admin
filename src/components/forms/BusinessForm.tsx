@@ -60,7 +60,7 @@ const BusinessForm = ({ areaId }: BusinessFormProps) => {
 
       const tableRows = tokensData.map((token, index) => ({
         sn: (index + 1).toString(),
-        token: token,
+        token: "",
         businessName: "",
         location: "",
         date: "",
