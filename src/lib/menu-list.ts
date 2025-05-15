@@ -15,6 +15,8 @@ import {
   Home,
   PersonStanding,
   Cloud,
+  Watch,
+  Gauge,
 } from "lucide-react";
 
 export type Role = "admin" | "superadmin" | "enumerator";
@@ -112,9 +114,16 @@ const menuConfig: Menu[] = [
     submenus: [],
   },
   {
-    href: "/wardwise",
-    label: "वडागत डाटा",
-    icon: Home,
+    href: "/cbs-comparison",
+    label: "CBS Comparison",
+    icon: Gauge, 
+    roles: ["admin", "superadmin"],
+    submenus: [],
+  },
+  {
+    href:"/wardwise",
+    label: "Wardwise Data",
+    icon:Home,
     roles: ["admin", "superadmin"],
     submenus: [],
   },
