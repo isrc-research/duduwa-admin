@@ -266,3 +266,33 @@ export const getAreaCodesByEnumeratorName = publicProcedure
 
     return results.map(result => result.areaCode);
   });
+
+  export const getGpsByWard = publicProcedure
+    .input(z.object({ wardId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const businessDetails = await ctx.db
+        .select({
+          id: business.id,
+          businessName: business.businessName,
+          wardId: business.wardId,
+          lat: sql<number>`ST_Y(${business.gps}::geometry)`,
+          lng: sql<number>`ST_X(${business.gps}::geometry)`,
+          gpsAccuracy: business.gpsAccuracy,
+          enumeratorName: business.enumeratorName,
+        })
+        .from(business)
+        .where(eq(business.wardId, input.wardId));
+
+      return businessDetails.map(business => ({
+        id: business.id,
+        type: "business",
+        name: business.businessName,
+        wardNo: business.wardId?.toString(),
+        enumeratorName: business.enumeratorName,
+        gpsPoint: business.lat && business.lng ? {
+          lat: business.lat,
+          lng: business.lng,
+          accuracy: business.gpsAccuracy ?? 0
+        } : null
+      }));
+    });

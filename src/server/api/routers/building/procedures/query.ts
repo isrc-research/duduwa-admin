@@ -223,3 +223,38 @@ export const getEnumeratorNames = publicProcedure.query(async ({ ctx }) => {
 
   return results.map(result => result.enumeratorName);
 });
+
+export const getGpsByWard = publicProcedure
+  .input(z.object({ wardNumber: z.string() }))
+  .query(async ({ ctx, input }) => {
+    const buildingPoints = await ctx.db
+      .select({
+        id: buildings.id,
+        enumeratorName: buildings.enumeratorName,
+        locality: buildings.locality,
+        lat: sql<number>`ST_Y(${buildings.gps}::geometry)`,
+        lng: sql<number>`ST_X(${buildings.gps}::geometry)`,
+        gpsAccuracy: buildings.gpsAccuracy,
+        areaCode: buildings.tmpAreaCode
+      })
+      .from(buildings)
+      .where(
+        and(
+          eq(buildings.tmpWardNumber, parseInt(input.wardNumber, 10)),
+          sql`${buildings.gps} IS NOT NULL`
+        )
+      );
+
+    return buildingPoints.map(point => ({
+      id: point.id,
+      type: "building",
+      enumeratorName: point.enumeratorName,
+      areaCode: point.areaCode,
+      locality: point.locality,
+      gpsPoint: point.lat && point.lng ? {
+        lat: point.lat,
+        lng: point.lng,
+        accuracy: point.gpsAccuracy ?? 0
+      } : null
+    }));
+  });

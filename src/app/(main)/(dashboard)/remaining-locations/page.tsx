@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { ContentLayout } from "@/components/admin-panel/content-layout";
 import { api } from "@/trpc/react";
 import {
@@ -50,19 +51,23 @@ const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
   ssr: false,
 });
 
-// Don't dynamically import the useMap hook directly, as it's not a component
-// Instead, we'll use it inside the MapUpdater component
+const CircleMarker = dynamic(
+  () => import("react-leaflet").then((mod) => mod.CircleMarker),
+  { ssr: false },
+);
 
-// Helper component to fit map bounds to areas - wrapped in dynamic import to ensure client-side only
+// Helper component to fit map bounds to areas, ward boundary, and GPS points
 const MapUpdater = dynamic(
   () =>
     Promise.resolve(
       ({
         areas,
         wardGeometry,
+        gpsPoints,
       }: {
         areas: any[];
         wardGeometry?: GeoJsonObject;
+        gpsPoints?: any[];
       }) => {
         // Only import and use useMap inside this component
         const useMapHook = require("react-leaflet").useMap;
@@ -155,6 +160,22 @@ const MapUpdater = dynamic(
               });
             }
 
+            // Process GPS points if available
+            if (Array.isArray(gpsPoints) && gpsPoints.length > 0) {
+              gpsPoints.forEach((point) => {
+                if (
+                  point.gpsPoint &&
+                  point.gpsPoint.lat &&
+                  point.gpsPoint.lng
+                ) {
+                  bounds.extend(
+                    new L.LatLng(point.gpsPoint.lat, point.gpsPoint.lng),
+                  );
+                  hasValidBounds = true;
+                }
+              });
+            }
+
             // Fit map to bounds with some padding if we have valid bounds
             if (hasValidBounds && bounds.isValid()) {
               map.fitBounds(bounds, {
@@ -170,7 +191,7 @@ const MapUpdater = dynamic(
             // Set default view as fallback
             map.setView([26.72069444681497, 88.04840072844279], 13);
           }
-        }, [areas, wardGeometry, map]);
+        }, [areas, wardGeometry, gpsPoints, map]);
 
         return null;
       },
@@ -234,6 +255,52 @@ const getAreaStyleByStatus = (status: string | null) => {
   }
 };
 
+// Function to get marker icon based on submission type
+const getMarkerIcon = (type: string) => {
+  const L = require("leaflet");
+
+  const iconSize = [25, 25];
+
+  // Define icon options based on submission type
+  let iconUrl;
+  let iconColor;
+
+  switch (type) {
+    case "building":
+      iconUrl =
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png";
+      iconColor = "#ef4444";
+      break;
+    case "family":
+      iconUrl =
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png";
+      iconColor = "#3b82f6";
+      break;
+    case "business":
+      iconUrl =
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png";
+      iconColor = "#10b981";
+      break;
+    default:
+      iconUrl =
+        "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-black.png";
+      iconColor = "#000000";
+  }
+
+  return {
+    icon: new L.Icon({
+      iconUrl,
+      shadowUrl:
+        "https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png",
+      iconSize: iconSize,
+      iconAnchor: [12, 25],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    }),
+    color: iconColor,
+  };
+};
+
 // Component for rendering the map section
 const MapSection = dynamic(
   () =>
@@ -241,12 +308,14 @@ const MapSection = dynamic(
       ({
         areasForMap,
         wardGeometry,
+        buildingGpsPoints,
         isLoading,
         isStreetView,
         toggleView,
       }: {
         areasForMap: any[];
         wardGeometry: any;
+        buildingGpsPoints: any[] | undefined;
         isLoading: boolean;
         isStreetView: boolean;
         toggleView: () => void;
@@ -269,10 +338,11 @@ const MapSection = dynamic(
                   zoom={13}
                   scrollWheelZoom={true}
                 >
-                  {/* Fit map to areas and ward boundary */}
+                  {/* Fit map to areas, ward boundary and GPS points */}
                   <MapUpdater
                     areas={areasForMap || []}
                     wardGeometry={wardGeometry as unknown as GeoJsonObject}
+                    gpsPoints={buildingGpsPoints || []}
                   />
 
                   {/* Base map tile layer */}
@@ -322,7 +392,22 @@ const MapSection = dynamic(
                         <GeoJSON
                           key={area.id}
                           data={area.geometry as GeoJsonObject}
-                          style={getAreaStyleByStatus(area.areaStatus)}
+                          style={{
+                            color:
+                              area.areaStatus === "completed"
+                                ? "#047857"
+                                : "#dc2626",
+                            fillColor:
+                              area.areaStatus === "completed"
+                                ? "#10b981"
+                                : "#fee2e2",
+                            weight: 3,
+                            opacity: 0.9,
+                            fillOpacity:
+                              area.areaStatus === "completed" ? 0.4 : 0.3,
+                            dashArray:
+                              area.areaStatus === "completed" ? undefined : "3",
+                          }}
                         >
                           <Popup>
                             <div className="p-2 w-48">
@@ -359,6 +444,51 @@ const MapSection = dynamic(
                         </GeoJSON>
                       ),
                   )}
+
+                  {/* Building GPS Points as blue dots */}
+                  {buildingGpsPoints?.map((point) => {
+                    if (
+                      !point.gpsPoint ||
+                      !point.gpsPoint.lat ||
+                      !point.gpsPoint.lng
+                    )
+                      return null;
+
+                    return (
+                      <CircleMarker
+                        key={`building-${point.id}`}
+                        center={[point.gpsPoint.lat, point.gpsPoint.lng]}
+                        radius={2}
+                        pathOptions={{
+                          color: "#1e40af", // Border color (darker blue)
+                          weight: 1,
+                          fillColor: "#3b82f6", // Fill color (blue)
+                          fillOpacity: 0.8,
+                        }}
+                      >
+                        <Popup>
+                          <div className="p-2 w-48">
+                            <div className="font-medium text-sm mb-1 text-blue-600">
+                              Building Location
+                            </div>
+                            <div className="text-xs mb-1">
+                              Area: {point.areaCode || "Unknown"}
+                            </div>
+                            {point.locality && (
+                              <div className="text-xs">
+                                Locality: {point.locality}
+                              </div>
+                            )}
+                            {point.enumeratorName && (
+                              <div className="text-xs mt-1">
+                                Enumerator: {point.enumeratorName}
+                              </div>
+                            )}
+                          </div>
+                        </Popup>
+                      </CircleMarker>
+                    );
+                  })}
                 </MapContainer>
               </>
             )}
@@ -392,6 +522,13 @@ export default function RemainingLocationsPage() {
     enabled: !!selectedWard,
   });
 
+  // Fetch GPS points by ward for buildings only
+  const { data: buildingGpsPoints, isLoading: isBuildingGpsLoading } =
+    api.building.getGpsByWard.useQuery(
+      { wardNumber: selectedWard || "0" },
+      { enabled: !!selectedWard },
+    );
+
   // Filter layer areas by ward
   const filteredLayerAreas = allLayerAreas?.filter(
     (area) => selectedWard && area.wardNumber === parseInt(selectedWard),
@@ -417,12 +554,12 @@ export default function RemainingLocationsPage() {
       areasWithStatus?.filter((a) => a.areaStatus === "ongoing_survey")
         .length || 0,
     unassigned: areasWithStatus?.filter((a) => !a.assignedTo).length || 0,
-    waiting:
-      areasWithStatus?.filter((a) => a.areaStatus === "asked_for_completion")
-        .length || 0,
   };
 
-  const isLoading = isWardLoading || isAreasLoading;
+  // Building GPS point count
+  const buildingCount = buildingGpsPoints?.length || 0;
+
+  const isLoading = isWardLoading || isAreasLoading || isBuildingGpsLoading;
 
   const StatCard = ({
     icon: Icon,
@@ -515,8 +652,8 @@ export default function RemainingLocationsPage() {
                 />
                 <StatCard
                   icon={MapPin}
-                  title="Ongoing Survey"
-                  value={statusCounts.ongoing}
+                  title="Building Points"
+                  value={buildingCount}
                 />
                 <StatCard
                   icon={AlertTriangle}
@@ -530,6 +667,7 @@ export default function RemainingLocationsPage() {
                 <MapSection
                   areasForMap={areasForMap || []}
                   wardGeometry={wardData?.geometry}
+                  buildingGpsPoints={buildingGpsPoints}
                   isLoading={isLoading}
                   isStreetView={isStreetView}
                   toggleView={toggleView}
@@ -543,30 +681,22 @@ export default function RemainingLocationsPage() {
                 className="bg-white p-4 rounded-lg shadow-sm"
               >
                 <h3 className="font-medium text-sm mb-3">Map Legend</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-red-700 bg-red-100 rounded-sm"></div>
                     <span className="text-xs">Ward Boundary</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-green-800 bg-green-500 rounded-sm"></div>
-                    <span className="text-xs">Completed</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-blue-800 bg-blue-500 rounded-sm"></div>
-                    <span className="text-xs">Ongoing Survey</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-amber-700 bg-amber-500 rounded-sm"></div>
-                    <span className="text-xs">Asked for Completion</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-purple-800 bg-purple-500 rounded-sm"></div>
-                    <span className="text-xs">Newly Assigned</span>
+                    <span className="text-xs">Completed Areas</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-red-600 bg-red-100 rounded-sm"></div>
-                    <span className="text-xs">Unassigned</span>
+                    <span className="text-xs">Remaining Areas</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                    <span className="text-xs">Building Location</span>
                   </div>
                 </div>
               </motion.div>
