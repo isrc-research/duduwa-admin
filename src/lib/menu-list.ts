@@ -136,13 +136,6 @@ const menuConfig: Menu[] = [
     submenus: [],
   },
   {
-    href: "/cbs-comparison",
-    label: "CBS Comparison",
-    icon: Gauge, 
-    roles: ["admin", "superadmin"],
-    submenus: [],
-  },
-  {
     href:"/wardwise",
     label: "Wardwise Data",
     icon:Home,
